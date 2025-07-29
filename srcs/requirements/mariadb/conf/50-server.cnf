@@ -1,0 +1,28 @@
+[mysqld]
+# The main MariaDB server (daemon) section
+
+# Run the MariaDB daemon as this Linux user.
+# Changed from the default `mysql` to `root` per project requirement.
+user                    = root
+
+# File paths for various runtime artifacts
+pid-file                = /run/mysqld/mysqld.pid    # Process ID file
+socket                  = /run/mysqld/mysqld.sock   # Unix socket for local connections
+port                    = 3306                      # TCP port for client connections
+basedir                 = /usr                      # Base installation directory
+datadir                 = /var/lib/mysql            # Where database files are stored
+tmpdir                  = /tmp                      # Directory for temporary files
+lc-messages-dir         = /usr/share/mysql          # Location of error/message files
+
+# Prevent external processes from locking tables
+skip-external-locking
+
+# Bind to all network interfaces inside the container,
+# allowing other containers on the `inception-net` to connect.
+bind-address            = 0.0.0.0
+
+# --- Optional tuning parameters (commented-out by default) ---
+# max_connections       = 200     # Maximum number of simultaneous client connections
+# character-set-server  = utf8mb4 # Default character set for databases and tables
+# default_storage_engine= InnoDB  # Default storage engine
+# innodb_file_per_table = 1       # Store each InnoDB table’s data in its own file
