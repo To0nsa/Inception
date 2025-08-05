@@ -6,20 +6,25 @@ This document explains how to navigate within the Docker environment, inspect th
 
 ## Table of Contents
 
-* [Prerequisites](#prerequisites)
-* [Managing the Environment](#starting-the-environment)
-* [Directory Structure](#directory-structure)
-* [Working with Containers](#working-with-containers)
-
-  * [Listing Containers](#listing-containers)
-  * [Accessing the WordPress Container](#accessing-the-wordpress-container)
-  * [Accessing the MariaDB Container](#accessing-the-mariadb-container)
-* [Inspecting the Database](#inspecting-the-database)
-* [Inspecting `wp-config.php`](#inspecting-wp-configphp)
-* [File Transfer Between Host and Container](#file-transfer-between-host-and-container)
-* [Managing Volumes](#managing-volumes)
-* [Viewing Logs](#viewing-logs)
-* [Stopping & Cleaning Up](#stopping--cleaning-up)
+- [Project README](#project-readme)
+  - [Table of Contents](#table-of-contents)
+  - [Prerequisites](#prerequisites)
+  - [Managing the Environment](#managing-the-environment)
+  - [Directory Structure](#directory-structure)
+  - [Working with Containers](#working-with-containers)
+    - [Listing Containers](#listing-containers)
+    - [Accessing the WordPress Container](#accessing-the-wordpress-container)
+    - [Accessing the MariaDB Container](#accessing-the-mariadb-container)
+  - [Inspecting the Database](#inspecting-the-database)
+  - [Inspecting `wp-config.php`](#inspecting-wp-configphp)
+  - [File Transfer Between Host and Container](#file-transfer-between-host-and-container)
+    - [Copying from Container to Host](#copying-from-container-to-host)
+    - [Copying from Host to Container](#copying-from-host-to-container)
+  - [File Transfer Between VM Host and VM](#file-transfer-between-vm-host-and-vm)
+    - [Copying from VM host to VM:](#copying-from-vm-host-to-vm)
+    - [Copying from VM to VM Host:](#copying-from-vm-to-vm-host)
+  - [Managing Volumes](#managing-volumes)
+  - [Viewing Logs](#viewing-logs)
 
 ---
 
@@ -213,7 +218,7 @@ docker-compose -f srcs/docker-compose.yml exec mariadb bash
 2. **Launch the MySQL client**:
 
    ```bash
-   mysql -u"$MYSQL_USER" -p"$(cat /run/secrets/db_password)" "$MYSQL_DATABASE"
+   mysql -u"$MYSQL_USER" -p"$(cat /run/secrets/mysql_user_password)" "$MYSQL_DATABASE"
    ```
 
    * Environment variables are loaded from `/run/secrets` or `.env`.

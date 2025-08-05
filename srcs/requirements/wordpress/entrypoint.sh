@@ -7,7 +7,7 @@ WP_PATH=/var/www/html
 DB_HOST="${WORDPRESS_DB_HOST:-mariadb:3306}"
 DB_NAME="${WORDPRESS_DB_NAME}"
 DB_USER="${WORDPRESS_DB_USER}"
-DB_PASSWORD="$(cat /run/secrets/mysql_password)"
+DB_PASSWORD="$(cat /run/secrets/mysql_user_password)"
 
 DOMAIN_NAME="${DOMAIN_NAME}"
 WP_TITLE="${WP_TITLE:-Inception Blog}"
@@ -24,7 +24,7 @@ WP_CLI="runuser -u www-data -- wp --allow-root --path=${WP_PATH}"
 
 echo "DB_USER=$DB_USER"
 echo "DB_NAME=$DB_NAME"
-echo "MYSQL_USER_PW=$(cat /run/secrets/mysql_password)"
+echo "MYSQL_USER_PW=$(cat /run/secrets/mysql_user_password)"
 
 # 1) Prep file permissions
 mkdir -p "${WP_PATH}" /var/www/.wp-cli/cache

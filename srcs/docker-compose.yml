@@ -34,6 +34,17 @@ services:
       - mariadb_conf:/etc/mysql/mariadb.conf.d:ro
     networks:
       - inception-net
+    healthcheck:
+      test: ["CMD-SHELL",
+        "mysqladmin --protocol=TCP ping \
+          -h 0.0.0.0 -P 3306 \
+          -u${MYSQL_USER} -p$(cat /run/secrets/mysql_user_password) \
+        || exit 1"
+      ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
   wordpress:
     build:
@@ -41,7 +52,8 @@ services:
     container_name: wordpress
     restart: unless-stopped
     depends_on:
-      - mariadb
+      mariadb:
+        condition: service_healthy
     environment:
       WORDPRESS_DB_HOST: mariadb:3306
       WORDPRESS_DB_USER: ${MYSQL_USER}

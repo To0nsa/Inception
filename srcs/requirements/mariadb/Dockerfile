@@ -24,6 +24,3 @@ EXPOSE 3306
 
 # Use our custom entrypoint script as PID 1; it bootstraps the database on first run
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-
-# Default command: start the MariaDB daemon in safe mode
-CMD ["mysqld"]

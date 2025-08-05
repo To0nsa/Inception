@@ -36,7 +36,6 @@ prune:
 
 ## Remove containers and wipe host data directories
 fclean: prune
-## sudo rm -rf /home/$(USER)/data/db /home/$(USER)/data/www
 
 ## Full rebuild: clean then bring everything up
 re: fclean all
