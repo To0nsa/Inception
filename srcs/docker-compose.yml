@@ -1,53 +1,60 @@
 services:
   nginx:
-    build: ./requirements/nginx   # Path to NGINX Dockerfile
-    container_name: nginx         # Name assigned to the container
-    restart: unless-stopped       # Restart policy on crash or host reboot
+    build: ./requirements/nginx
+    container_name: nginx
+    restart: unless-stopped
     depends_on:
-      - wordpress                 # Ensure Wordpress starts before Nginx
+      - wordpress
     ports:
-      - "443:443"                 # Map host port 443 to container port 443 (HTTPS)
+      - "443:443"
     volumes:
-      - ./requirements/nginx/conf:/etc/nginx/conf.d:ro    # NGINX config files (read-only)
-      - /home/nlouis/data/www:/var/www/html:ro            # WordPress files served by NGINX (read-only)
+      - nginx_conf:/etc/nginx/conf.d:ro
+      - wp_files:/var/www/html:ro
     secrets:
       - ssl_cert
       - ssl_key
     networks:
-      - inception-net             # Attach to custom Docker bridge network
+      - inception-net
 
   mariadb:
     build:
-      context: ./requirements/mariadb  # Path to MariaDB Dockerfile
-    container_name: mariadb            # Name assigned to the container
-    restart: unless-stopped            # Restart policy on crash or host reboot
+      context: ./requirements/mariadb
+    container_name: mariadb
+    restart: unless-stopped
     environment:
-      MYSQL_DATABASE:      ${MYSQL_DATABASE}       # Database name from .env
-      MYSQL_USER:          ${MYSQL_USER}           # App user from .env
+      MYSQL_DATABASE:            ${MYSQL_DATABASE}
+      MYSQL_USER:                ${MYSQL_USER}
+      MYSQL_ROOT_PASSWORD_FILE:  /run/secrets/mysql_root_password
+      MYSQL_PASSWORD_FILE:       /run/secrets/mysql_user_password
     secrets:
       - mysql_root_password
-      - mysql_password
+      - mysql_user_password
     volumes:
-      - /home/nlouis/data/db:/var/lib/mysql                       # Persist database data on host
-      - ./requirements/mariadb/conf:/etc/mysql/mariadb.conf.d:ro  # MariaDB config (read-only)
+      - db_data:/var/lib/mysql
+      - mariadb_conf:/etc/mysql/mariadb.conf.d:ro
     networks:
       - inception-net
 
   wordpress:
     build:
-      context: ./requirements/wordpress   # Path to WordPress Dockerfile
-    container_name: wordpress             # Name assigned to the container
-    restart: unless-stopped               # Restart policy on crash or host reboot
+      context: ./requirements/wordpress
+    container_name: wordpress
+    restart: unless-stopped
     depends_on:
-      - mariadb                           # Ensure MariaDB starts before WordPress
+      - mariadb
     environment:
-      WORDPRESS_DB_HOST:      mariadb:3306        # Host and port for DB connection
-      WORDPRESS_DB_USER:      ${MYSQL_USER}       # DB username from .env
-      WORDPRESS_DB_NAME:      ${MYSQL_DATABASE}   # DB name from .env
+      WORDPRESS_DB_HOST: mariadb:3306
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+      WP_ADMIN_USER:     ${WP_ADMIN_USER}
+      WP_ADMIN_EMAIL:    ${WP_ADMIN_EMAIL}
+      WP_SECOND_USER:    ${WP_SECOND_USER}
+      WP_SECOND_EMAIL:   ${WP_SECOND_EMAIL}
+      DOMAIN_NAME:       ${DOMAIN_NAME}
     volumes:
-      - /home/nlouis/data/www:/var/www/html       # Persist WP files on host
+      - wp_files:/var/www/html
     secrets:
-      - mysql_password
+      - mysql_user_password
       - wp_admin_password
       - wp_user_password
     networks:
@@ -55,13 +62,23 @@ services:
 
 networks:
   inception-net:
-    driver: bridge  # Use Docker's default bridge network driver
+    driver: bridge
+
+volumes:
+  db_data:
+    driver: local
+  wp_files:
+    driver: local
+  nginx_conf:
+    driver: local
+  mariadb_conf:
+    driver: local
 
 secrets:
   mysql_root_password:
-    file: ../secrets/db_root_password.txt
-  mysql_password:
-    file: ../secrets/db_password.txt
+    file: ../secrets/mysql_root_password.txt
+  mysql_user_password:
+    file: ../secrets/mysql_user_password.txt
   wp_admin_password:
     file: ../secrets/wp_admin_password.txt
   wp_user_password:

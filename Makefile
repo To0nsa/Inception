@@ -11,7 +11,7 @@ all: up
 up:
 	@mkdir -p /home/$(USER)/data/db /home/$(USER)/data/www
 	@sudo chown -R $(UID):$(GID) /home/$(USER)/data/db /home/$(USER)/data/www
-	$(COMPOSE) up -d --build
+	$(COMPOSE) up --build
 
 ## Stop and remove containers, networks
 down:
@@ -31,11 +31,12 @@ logs:
 
 ## Prune unused Docker resources
 prune:
-	docker system prune -af --volumes
+	$(COMPOSE) stop $(docker ps -q) \
+  && docker system prune -af --volumes
 
 ## Remove containers and wipe host data directories
-fclean: down
-	sudo rm -rf /home/$(USER)/data/db /home/$(USER)/data/www
+fclean: prune
+## sudo rm -rf /home/$(USER)/data/db /home/$(USER)/data/www
 
 ## Full rebuild: clean then bring everything up
 re: fclean all

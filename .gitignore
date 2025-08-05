@@ -1,5 +1,3 @@
-# Ignore environment files
 .env
-
-# Secrets directory (TLS certs, DB passwords, etc.)
 secrets/
+README.md

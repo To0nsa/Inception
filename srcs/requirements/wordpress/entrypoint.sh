@@ -1,61 +1,118 @@
-#!/bin/sh
-set -e  # Exit immediately if any command fails to prevent partial bootstrapping
+#!/bin/bash
+set -e
 
-# Directory where WordPress files should reside inside the container
-WEBROOT=/var/www/html
+# 0) Variables & secrets
+WP_PATH=/var/www/html
 
-# Paths where Docker mounts secrets
-WP_ADMIN_PASSWORD_FILE=/run/secrets/wp_admin_password
-WP_SECOND_PASSWORD_FILE=/run/secrets/wp_user_password
+DB_HOST="${WORDPRESS_DB_HOST:-mariadb:3306}"
+DB_NAME="${WORDPRESS_DB_NAME}"
+DB_USER="${WORDPRESS_DB_USER}"
+DB_PASSWORD="$(cat /run/secrets/mysql_password)"
 
-# Read the secrets into shell variables
-# (the files are mounted read-only by Docker)
-WP_ADMIN_PASSWORD="$(cat "$WP_ADMIN_PASSWORD_FILE")"
-WP_SECOND_PASSWORD="$(cat "$WP_SECOND_PASSWORD_FILE")"
+DOMAIN_NAME="${DOMAIN_NAME}"
+WP_TITLE="${WP_TITLE:-Inception Blog}"
 
-# 1. If the webroot is empty (first container start or fresh bind mount), bootstrap WordPress
-if [ -z "$(ls -A "$WEBROOT")" ]; then
-  echo "Populating $WEBROOT with WordPress..."
-  # 1.a Download the latest WordPress archive silently
-  # 1.b Pipe it directly into tar to extract into the webroot
-  curl -fsSL https://wordpress.org/latest.tar.gz \
-    | tar -xz -C "$WEBROOT" --strip-components=1
-  # 1.c Ensure proper file ownership so PHP-FPM (www-data) can read/write
-  chown -R www-data:www-data "$WEBROOT"
-  echo "WordPress installed."
+WP_ADMIN_USER="${WP_ADMIN_USER}"
+WP_ADMIN_EMAIL="${WP_ADMIN_EMAIL}"
+WP_ADMIN_PASSWORD="$(cat /run/secrets/wp_admin_password)"
+
+WP_SECOND_USER="${WP_SECOND_USER}"
+WP_SECOND_EMAIL="${WP_SECOND_EMAIL}"
+WP_SECOND_PASSWORD="$(cat /run/secrets/wp_user_password)"
+
+WP_CLI="runuser -u www-data -- wp --allow-root --path=${WP_PATH}"
+
+echo "DB_USER=$DB_USER"
+echo "DB_NAME=$DB_NAME"
+echo "MYSQL_USER_PW=$(cat /run/secrets/mysql_password)"
+
+# 1) Prep file permissions
+mkdir -p "${WP_PATH}" /var/www/.wp-cli/cache
+chown -R www-data:www-data "${WP_PATH}" /var/www/.wp-cli
+
+# 2) Download core if missing
+if [ ! -d "${WP_PATH}/wp-admin" ]; then
+  echo "⏳ Downloading WordPress core..."
+  ${WP_CLI} core download
+  echo "✅ WordPress core downloaded."
+else
+  echo "WordPress is present."
 fi
 
-cd /var/www/html
+cd "${WP_PATH}"
 
-# 2. Perform install & user creation if wp-config.php is not yet present
-if [ ! -f wp-config.php ]; then
-  echo "Installing WordPress core and users via WP-CLI…"
+# 3) Generate wp-config.php if needed
+if [ ! -f wp-config.php ] || ! grep -q "DB_NAME" wp-config.php; then
+  echo "🔧 Generating wp-config.php…"
+  ${WP_CLI} config create \
+    --dbname="${DB_NAME}" \
+    --dbuser="${DB_USER}" \
+    --dbpass="${DB_PASSWORD}" \
+    --dbhost="${DB_HOST}" \
+    --dbcharset="utf8mb4" \
+    --dbcollate="" \
+    --skip-check \
+    --skip-salts \
+    --force
 
-  # Generate wp-config.php using DB creds from env (or other secrets)
-  wp config create \
-    --dbname="$WORDPRESS_DB_NAME" \
-    --dbuser="$WORDPRESS_DB_USER" \
-    --dbpass="$(cat /run/secrets/mysql_password)" \
-    --dbhost="$WORDPRESS_DB_HOST" \
-    --skip-check
+  # re-write those constants so they’re properly quoted
+  ${WP_CLI} config set DB_HOST    "${DB_HOST}"
+  ${WP_CLI} config set DB_CHARSET "utf8mb4"
+  ${WP_CLI} config set DB_COLLATE ""
 
-  # Core install with the administrator account
-  wp core install \
-    --url="https://$DOMAIN_NAME" \
-    --title="Inception Site" \
-    --admin_user="$WP_ADMIN_USER" \
-    --admin_password="$WP_ADMIN_PASSWORD" \
-    --admin_email="$WP_ADMIN_EMAIL" \
+  ${WP_CLI} config shuffle-salts
+  echo "✅ wp-config.php created."
+else
+  echo "wp-config.php is already set."
+fi
+
+# 4) Wait for MariaDB to be listening
+echo "⏳ Waiting for database …"
+# busy-wait until WP-CLI’s own db check succeeds
+until ${WP_CLI} db check > /dev/null 2>&1; do
+  :  # no-op
+done
+echo "✅ Database is up!"
+
+# 5) Install WP core if not yet installed
+if ! ${WP_CLI} core is-installed --quiet; then
+  echo "⚙️ Installing WordPress core…"
+  ${WP_CLI} core install \
+    --url="https://${DOMAIN_NAME}" \
+    --title="${WP_TITLE}" \
+    --admin_user="${WP_ADMIN_USER}" \
+    --admin_password="${WP_ADMIN_PASSWORD}" \
+    --admin_email="${WP_ADMIN_EMAIL}" \
     --skip-email
-
-  # Create the second user
-  wp user create "$WP_SECOND_USER" "$WP_SECOND_EMAIL" \
-    --role=author \
-    --user_pass="$WP_SECOND_PASSWORD"
-
-  echo "WordPress installed with two users."
+  echo "✅ WordPress core installed."
+else
+  echo "WordPress core is installed."
 fi
 
-# 2. Exec the container's CMD (php-fpm) replacing this shell process
-#    This ensures PHP-FPM runs as PID 1 to handle signals correctly
+# 6) Create users via WP-CLI
+echo "🔧 Ensuring admin and second user exist…"
+
+if ${WP_CLI} user exists "${WP_ADMIN_USER}" --quiet; then
+  echo "Admin user '${WP_ADMIN_USER}' exists."
+else
+  ${WP_CLI} user create \
+    "${WP_ADMIN_USER}" "${WP_ADMIN_EMAIL}" \
+    --role=administrator \
+    --user_pass="${WP_ADMIN_PASSWORD}" \
+  && echo "Created admin user '${WP_ADMIN_USER}'."
+fi
+
+if ${WP_CLI} user exists "${WP_SECOND_USER}" --quiet; then
+  echo "Author user '${WP_SECOND_USER}' exists."
+else
+  ${WP_CLI} user create \
+    "${WP_SECOND_USER}" "${WP_SECOND_EMAIL}" \
+    --role=author \
+    --user_pass="${WP_SECOND_PASSWORD}" \
+  && echo "Created author user '${WP_SECOND_USER}'."
+fi
+
+echo "✅ WordPress is all set"
+
+# 7) Hand off to PHP-FPM
 exec "$@"
