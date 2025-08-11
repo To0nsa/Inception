@@ -21,8 +21,8 @@ This document explains how to navigate within the Docker environment, inspect th
     - [Copying from Container to Host](#copying-from-container-to-host)
     - [Copying from Host to Container](#copying-from-host-to-container)
   - [File Transfer Between VM Host and VM](#file-transfer-between-vm-host-and-vm)
-    - [Copying from VM host to VM:](#copying-from-vm-host-to-vm)
-    - [Copying from VM to VM Host:](#copying-from-vm-to-vm-host)
+    - [Copying from VM host to VM](#copying-from-vm-host-to-vm)
+    - [Copying from VM to VM Host](#copying-from-vm-to-vm-host)
   - [Managing Volumes](#managing-volumes)
   - [Viewing Logs](#viewing-logs)
 
@@ -291,12 +291,14 @@ docker cp ~/my-local-plugin.zip $(docker-compose -f srcs/docker-compose.yml ps -
 
 ## File Transfer Between VM Host and VM
 
-### Copying from VM host to VM:
+### Copying from VM host to VM
+
 ```bash
 scp -P 2222 -r ~/Inception nlouis@localhost:/home/nlouis/
 ```
 
-### Copying from VM to VM Host:
+### Copying from VM to VM Host
+
 ```bash
 scp -P 2222 -r nlouis@localhost:/home/nlouis/Inception ~/Downloads
 ```

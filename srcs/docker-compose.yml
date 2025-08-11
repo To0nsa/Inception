@@ -37,9 +37,8 @@ services:
     healthcheck:
       test: ["CMD-SHELL",
         "mysqladmin --protocol=TCP ping \
-          -h 0.0.0.0 -P 3306 \
-          -u${MYSQL_USER} -p$(cat /run/secrets/mysql_user_password) \
-        || exit 1"
+          -h 127.0.0.1 -P 3306 \
+          -uroot -p$(cat /run/secrets/mysql_root_password) || exit 1"
       ]
       interval: 5s
       timeout: 3s

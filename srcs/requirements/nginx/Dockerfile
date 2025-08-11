@@ -7,6 +7,6 @@ RUN apt-get update \
       curl \
  && rm -rf /var/lib/apt/lists/*
 
-# Run a shell that echoes first, then starts NGINX in the foreground
-ENTRYPOINT ["/bin/sh", "-c", "echo '🟢 NGINX is running'; exec nginx -g 'daemon off;'"]
+EXPOSE 443
+CMD ["nginx","-g","daemon off;"]
 
