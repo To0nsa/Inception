@@ -20,6 +20,7 @@ skip-external-locking
 # Bind to all network interfaces inside the container,
 # allowing other containers on the `inception-net` to connect.
 bind-address            = 0.0.0.0
+skip-networking         = 0
 
 # --- Optional tuning parameters (commented-out by default) ---
 # max_connections       = 200     # Maximum number of simultaneous client connections
